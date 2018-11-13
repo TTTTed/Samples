@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 BATCH_SIZE = 30
 SEED = 2
 # 基于seed产生随机数
@@ -28,6 +28,11 @@ plt.show()
 
 def get_weight(shape, regularizer):
     w = tf.Variable(tf.random_normal(shape), dtype=tf.float32)
+    # get_variable 共享相同的W
+    with tf.variable_scope("",reuse=tf.AUTO_REUSE) :
+        w2 = tf.get_variable(name="",shape=(),initializer=())
+
+    # 加入正则化参数              
     tf.add_to_collection('losses', tf.contrib.layers.l2_regularizer(regularizer)(w))
     return w
 
@@ -53,6 +58,20 @@ loss_mse = tf.reduce_mean(tf.square(y - y_))
 loss_total = loss_mse + tf.add_n(tf.get_collection('losses'))
 
 # 定义反向传播方法：不含正则化
+LEARNING_RATE_BASE = 0.1  # 最初学习率
+    LEARNING_RATE_DECAY = 0.99  # 学习率衰减率
+    LEARNING_RATE_STEP = 1  # 喂入多少轮后 ，更新一次学习率，设为总样本数/batch_size
+
+    # 设置一个计数器，跑了几轮，初值为0，设为不被训练
+    global_step = tf.Variable(0, trainable=False)
+
+    # 定义指数下降学习率
+    learning_rate = tf.train.exponential_decay(LEARNING_RATE_BASE,
+                                               global_step,
+                                               LEARNING_RATE_STEP,
+                                               LEARNING_RATE_DECAY,
+                                               staircase=True)
+train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)                                            
 train_step = tf.train.AdamOptimizer(0.0001).minimize(loss_mse)
 
 with tf.Session() as sess:
@@ -113,3 +132,55 @@ plt.scatter(X[:, 0], X[:, 1], c=np.squeeze(Y_c))
 
 plt.contour(xx, yy, probs, levels=[.5])
 plt.show()
+def shallow():
+    # 定义变量及滑动平均类
+    # 定义一个32位浮点变量，初始值为0.0，
+    w1 = tf.Variable(0, dtype=tf.float32)
+    # 定义一个计数器，记录轮数，初始值为0，不可以被优化
+    global_step = tf.Variable(0, trainable=False)
+    # 实例化滑动平均类，衰减率为0.99，当前轮数为global_step
+    Moving_Average_Decay = 0.99
+    ema = tf.train.ExponentialMovingAverage(Moving_Average_Decay, global_step)
+    # ema.apply()后的括号里是更新列表，每次运行sess.run(ema_op)时，就会对更新列表中的元素邱华栋平均值
+    # 在实际的应用是会使用tf.trainable_variables()自动将带训练参数汇总为列表
+    # ema_op = ema.apply([w1])
+    ema_op = ema.apply(tf.trainable_variables())
+
+    # 2.查看不同迭代器中变量取值的变化
+    with tf.Session() as sess:
+        # 初始化
+        init_op = tf.global_variables_initializer()
+        sess.run(init_op)
+        # 用ema.average(w1)获取w1的滑动平均值 （要运行多个节点，作为列表的元素列出，卸载sess.run()中）
+        # 打印出当前参数w1 和 w1 的滑动平均值
+        print(sess.run([w1, ema.average(w1)]))
+
+        # 参数w1的值赋为1
+        sess.run([tf.assign(w1, 1)])
+        sess.run(ema_op)
+        print(sess.run([w1, ema.average(w1)]))
+
+        # 更新step 和 w1 的值，模拟100论迭代后参数变为10
+        sess.run(tf.assign(global_step, 100))
+        sess.run(tf.assign(w1, 10))
+        sess.run(ema_op)
+        print(sess.run([w1, ema.average(w1)]))
+
+        # 每次sess.run 更新一次w1的滑动平均值
+        sess.run(ema_op)
+        print(sess.run([w1, ema.average(w1)]))
+
+        sess.run(ema_op)
+        print(sess.run([w1, ema.average(w1)]))
+
+        sess.run(ema_op)
+        print(sess.run([w1, ema.average(w1)]))
+
+        sess.run(ema_op)
+        print(sess.run([w1, ema.average(w1)]))
+
+        sess.run(ema_op)
+        print(sess.run([w1, ema.average(w1)]))
+
+        sess.run(ema_op)
+        print(sess.run([w1, ema.average(w1)]))

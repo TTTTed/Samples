@@ -3,7 +3,7 @@ from gensim.models import word2vec
 
 
 def initialize():
-    with open(r'docs\4422774.txt', 'rb') as f:
+    with open(r'docs\\4422774.txt', 'rb') as f:
         document_cut = jieba.cut(f.read(), cut_all=False)
         result = ' '.join(document_cut)
         result = result.encode('utf-8')
