@@ -2,5 +2,5 @@
 
  git add .
  git commit -m "$1"
- git pull
- git push
+ git pull origin master
+ git push origin master
