@@ -1,6 +1,7 @@
 import pymysql
-import codecs
 from jieba import cut
+import logging
+import csv
 
 # 打开数据库连接
 db = pymysql.connect("localhost",
@@ -12,48 +13,30 @@ db = pymysql.connect("localhost",
 # 使用cursor()方法获取操作游标
 cursor = db.cursor()
 
+csv_file = csv.reader(open(r"C:\Users\nan_h\Desktop\traindata.csv", "r+", errors="ignore"))
 
-def first():
-    # 使用execute方法执行SQL语句
-    cursor.execute("SELECT VERSION()")
+for each_line in csv_file:
+    if len(each_line) == 4:
+        try:
+            sent_1 = " ".join(cut(each_line[1].replace("\"\'", ""), cut_all=False))
 
-    # 使用 fetchone() 方法获取一条数据
-    data = cursor.fetchone()
+            sent_2 = " ".join(cut(each_line[2].replace("\'\"", ""), cut_all=False))
+            similarity = float(each_line[3])
 
-    print("Database version : %s " % data)
+            sql = """INSERT INTO traindata(sentence1,
+                                                        sentence2, 
+                                                        similarity) 
+                                 VALUES ('%s', '%s',%f)""" % (sent_1, sent_2, similarity)
 
-    cursor.execute("DROP TABLE IF EXISTS traindata")
-
-    # 创建数据表SQL语句
-    sql = """CREATE TABLE traindata (
-             id  int NOT NULL,
-             sentence  CHAR(20),
-             AGE INT,  
-             SEX CHAR(1),
-             INCOME FLOAT )"""
-    cursor.execute(sql)
+            # 执行sql语句
+            cursor.execute(sql)
+            # 提交到数据库
+            db.commit()
 
 
-with open(r"C:\Users\nan_h\Desktop\traindata.csv", "r+") as f:
-    for i in f:
-        i = i.split(",")
-        sent_1 = " ".join(cut(i[1], cut_all=False))
-        print(sent_1)
-        sent_2 = " ".join(cut(i[2], cut_all=False))
-        print(sent_2)
-        sim = float(i[3])
-
-        print("sent1:  %s ;sent2:  %s;similarity:  %s" % (sent_1, sent_2, sim))
-        sql = """INSERT INTO traindata(sentence1,
-                                        sentence2, 
-                                        similarity) 
-                 VALUES ({}, {},{})""".format(sent_1, sent_2, float(i[3]))
-
-        # 执行sql语句
-        cursor.execute(sql)
-        # 提交到数据库执行
-        db.commit()
-        break
+        except BaseException as e:
+            print("%s", e)
+            db.rollback()
 
 # 关闭数据库连接
 db.close()
