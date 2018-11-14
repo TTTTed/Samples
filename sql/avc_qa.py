@@ -1,5 +1,6 @@
 import pymysql
 import codecs
+from jieba import cut
 
 # 打开数据库连接
 db = pymysql.connect("localhost",
@@ -21,8 +22,6 @@ def first():
 
     print("Database version : %s " % data)
 
-
-def second():
     cursor.execute("DROP TABLE IF EXISTS traindata")
 
     # 创建数据表SQL语句
@@ -35,30 +34,26 @@ def second():
     cursor.execute(sql)
 
 
-with codecs.open("data.csv", "rb+") as f:
+with open(r"C:\Users\nan_h\Desktop\traindata.csv", "r+") as f:
     for i in f:
-        print(i[0])
-        if i[0] =="id":
-            continue
-
-        i = eval(i.decode("utf-8"))
-        id = int(i[0])
-        sent_1 = i[1]
-        sent_2 = i[2]
+        i = i.split(",")
+        sent_1 = " ".join(cut(i[1], cut_all=False))
+        print(sent_1)
+        sent_2 = " ".join(cut(i[2], cut_all=False))
+        print(sent_2)
         sim = float(i[3])
-        sql = """INSERT INTO traindata(id,
-                                        sentence_1, 
-                                        sentence_2,
-                                        similarity)
-                 VALUES (id, sent_1, sent_2,sim)"""
-        try:
-            # 执行sql语句
-            cursor.execute(sql)
-            # 提交到数据库执行
-            db.commit()
-        except:
-            # Rollback in case there is any error
-            db.rollback()
+
+        print("sent1:  %s ;sent2:  %s;similarity:  %s" % (sent_1, sent_2, sim))
+        sql = """INSERT INTO traindata(sentence1,
+                                        sentence2, 
+                                        similarity) 
+                 VALUES ({}, {},{})""".format(sent_1, sent_2, float(i[3]))
+
+        # 执行sql语句
+        cursor.execute(sql)
+        # 提交到数据库执行
+        db.commit()
+        break
 
 # 关闭数据库连接
 db.close()
